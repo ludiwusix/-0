@@ -1,0 +1,527 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define TElemType char
+#define MaxSize 100
+
+
+// 定义节点结构体
+typedef struct TNode
+{
+    TElemType data;  // 节点存储的数据
+    int parent; // 该节点的父节点下标，如果是根节点的话，父节点为-1
+} TNode;
+
+// 定义树结构体
+typedef struct Tree
+{
+    TNode parent[MaxSize]; // 所有节点数组
+    int Nodenum;           // 这个数的节点个数
+} Tree;
+
+//********************************基本操作函数********************************//
+//初始化树函数 参数：树T 作用：规定数据域为#，则为空，双亲为-1,则为空
+void InitTree(Tree* T)
+{
+    for (int i = 0; i < MaxSize; i++)
+    {
+        T->parent[i].data = '#';
+        T->parent[i].parent = -1;
+    }
+    T->Nodenum = 0;
+}
+//插入树的结点 参数：树T,结点node 作用：在双亲数组中插入结点，增加树的结点值
+void InsertNode(Tree* T, TElemType node)
+{
+    if (node != '#')
+    {
+        //插入到双亲数组中
+        T->parent[T->Nodenum++].data = node;
+    }
+}
+//插入双亲数组的双亲域 参数：树T ，结点node1,结点node2
+//作用：使双亲数组中,node2对应的双亲域为node1的下标
+void InsertParent(Tree* T, TElemType node1, TElemType node2)
+{
+    int place1, place2;
+    place1 = -1;
+    place2 = -1;
+    for (int i = 0; i < T->Nodenum; i++)//查找两点是否存在
+    {
+        if (node1 == T->parent[i].data)place1 = i;
+        if (node2 == T->parent[i].data)place2 = i;
+    }
+    if (place1 != -1 && place2 != -1)//两点均存在
+    {
+        T->parent[place2].parent = place1;
+    }
+}
+
+
+// 找到指定节点
+TNode FindNode(Tree* T, TElemType node)
+{
+    for (int i = 0; i < T->Nodenum; i++)
+    {
+        if (T->parent[i].data == node)
+        {
+            return T->parent[i];
+        }
+    }
+}
+
+// 找到指定节点下标
+int FindNodeIndex(Tree* T, TElemType node)
+{
+    for (int i = 0; i < T->Nodenum; i++)
+    {
+        if (T->parent[i].data == node)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// 显示树的方法
+void PrintTree(Tree* T, TNode node, int deep)
+{
+    // 初始化变量
+    int i = 0;
+    int node_index = FindNodeIndex(T, node.data);
+    // 先输出自己
+    // printf("%d", node_index);
+    for (size_t i = 0; i < deep; i++)
+        printf("|   ");
+    if (deep == 0)
+        printf(" |—<%c>\n ", node.data);
+    else
+        printf("|—<%c>\n ", node.data);
+
+    // 遍历查找自己的子节点并输出
+    for (size_t i = 0; i < T->Nodenum; i++)
+    {
+        if (T->parent[i].parent == node_index)
+        {
+            PrintTree(T, T->parent[i], deep + 1);
+        }
+    }
+}
+
+// 从文件读入数的信息，并用 TNode Tree 存储
+Tree* LoadData()
+{
+    // 初始化树
+    Tree* T;
+    T = (Tree*)malloc(sizeof(Tree));
+    InitTree(T);
+
+    // 读取文件
+    FILE* fp = NULL;
+    char data[255];
+    fp = fopen("data.txt", "r");
+    if (!fp)
+    {
+        printf("can't open file\n");
+    }
+    int index = 0;
+    while (!feof(fp))
+    {
+        fscanf(fp, "%s", &data);
+        // printf("%c %c %c \n",data[0],data[1],data[2]);
+        InsertNode(T, data[0]);
+        InsertParent(T, data[2], data[0]);
+    }
+    fclose(fp);
+    return T;
+}
+
+
+// 找到指定节点的父节点
+TNode FindParent(Tree* T, TElemType node)
+{
+    TNode P = { '#', -1 };
+    TNode N = FindNode(T, node);
+    if (N.parent != -1)
+    {
+        return T->parent[N.parent];
+    }
+    return P;
+}
+
+//先根遍历 参数：树T,根节点下标
+void PreOrder(Tree* T, int i)
+{
+    if (T->Nodenum != 0)
+    {
+        //printf("%d %c \n", i, T->parent[i].data);
+        //printf("%d ", i);
+        printf("%c ", T->parent[i].data);
+        for (int j = 0; j < T->Nodenum; j++)
+        {
+            if (T->parent[j].parent == i)
+                PreOrder(T, j);//按左右先序遍历子树
+        }
+    }
+}
+
+//后根遍历 参数：树T,根节点下标
+void PostOrder(Tree* T, int i)
+{
+    if (T->Nodenum != 0)
+    {
+
+        for (int j = 0; j < T->Nodenum; j++)
+        {
+            if (T->parent[j].parent == i)
+                PostOrder(T, j);//按左右先序遍历子树
+        }
+        //printf("%d ", i);
+        printf("%c ", T->parent[i].data);
+    }
+}
+
+// 层次遍历 参数：树T
+void LevelOrder(Tree* T)
+{
+    if (T->Nodenum != 0)
+    {
+        char floorNode[MaxSize];
+        floorNode[0] = 0;
+        int lp = 0;
+        int rp = 1;
+        while (rp < T->Nodenum)
+        {
+            int index = 0;
+            for (size_t i = lp; i < rp; i++)
+            {
+                for (int j = 0; j < T->Nodenum; j++)
+                {
+                    if (T->parent[j].parent == floorNode[i])
+                    {
+                        floorNode[rp + index++] = j;
+                    }
+                }
+            }
+            lp = rp;
+            rp = rp + index;
+        }
+        for (size_t i = 0; i < rp; i++)
+        {
+            //printf("%d ", floorNode[i]);
+            printf("%c ", T->parent[floorNode[i]].data);
+        }
+    }
+}
+
+// 找到指定节点的祖先
+TNode FindAncestor(Tree* T, TElemType node)
+{
+    TNode N = FindNode(T, node);
+    if (N.parent == -1)
+        return N;
+    else
+        return FindAncestor(T, T->parent[N.parent].data);
+}
+
+// 找到指定节点的所有子孙
+void FindAllChildren(Tree* T, TElemType node)
+{
+    int N_index = FindNodeIndex(T, node);
+    for (int j = 0; j < T->Nodenum; j++)
+    {
+        if (T->parent[j].parent == N_index)
+        {
+            printf("%c ", T->parent[j].data);
+            FindAllChildren(T, T->parent[j].data);
+        }
+    }
+}
+
+// 求指定节点的度
+int FindNodeDegree(Tree* T, TElemType node)
+{
+    int N_index = FindNodeIndex(T, node);
+    int degree = 0;
+    for (int j = 0; j < T->Nodenum; j++)
+        if (T->parent[j].parent == N_index)
+            degree++;
+    return degree;
+}
+
+// 求树的度
+int FindTreeDegree(Tree* T)
+{
+    int maxDegree = 0;
+    for (int j = 0; j < T->Nodenum; j++)
+    {
+        int nodeDegree = FindNodeDegree(T, T->parent[j].data);
+        if (nodeDegree > maxDegree)
+            maxDegree = nodeDegree;
+    }
+    return maxDegree;
+}
+
+// 求树的叶子结点个数
+int FindTreeLeafNum(Tree* T)
+{
+    int leafNum = 0;
+    for (int j = 0; j < T->Nodenum; j++)
+    {
+        int nodeDegree = FindNodeDegree(T, T->parent[j].data);
+        if (nodeDegree == 0)
+            leafNum++;
+    }
+    return leafNum;
+}
+
+// 求第k层结点个数，并显示
+void FindFloorNum(Tree* T, int k)
+{
+    if (T->Nodenum != 0)
+    {
+        char floorNode[MaxSize]{};
+        floorNode[0] = 0;
+        int lp = 0;
+        int rp = 1;
+        int floorIndex = 1;
+        printf("第 %d 层的结点有：", k);
+        while (rp < T->Nodenum)
+        {
+            if (k == floorIndex)
+            {
+                for (size_t i = lp; i < rp; i++)
+                {
+                    printf("%c ", T->parent[floorNode[i]].data);
+                }
+                break;
+            }
+            int index = 0;
+            for (size_t i = lp; i < rp; i++)
+            {
+                for (int j = 0; j < T->Nodenum; j++)
+                {
+                    if (T->parent[j].parent == floorNode[i])
+                    {
+                        floorNode[rp + index++] = j;
+                    }
+                }
+            }
+            lp = rp;
+            rp = rp + index;
+            floorIndex++;
+        }
+        printf("\n共计 %d 个\n", rp - lp);
+    }
+}
+
+
+// 定义二叉树
+typedef struct BinTreeNode
+{
+    TElemType data;
+    struct BinTreeNode* lchild, * rchild;
+} BinTree;
+
+// 创建二叉树结点
+BinTree* CreateBinTreeNode(TElemType data) {
+    BinTree* bt;
+    bt = (BinTree*)malloc(sizeof(BinTree));
+    bt->data = data;
+    bt->lchild = NULL;
+    bt->rchild = NULL;
+    return bt;
+}
+
+// 转换为二叉树
+void TransPTreeToBTree(BinTree* BT, Tree* T, int index)
+{
+    // 子节点个数
+    int childrenNum = 0;
+    // 遍历所有结点，找当前节点的子节点
+    for (size_t i = 0; i < T->Nodenum; i++)
+    {
+        if (T->parent[i].parent == index)
+        {
+            childrenNum++;
+            // 第一个子节点设为左节点
+            if (childrenNum == 1)
+            {
+                BT->lchild = CreateBinTreeNode(T->parent[i].data);
+                // 递归转换左节点
+                BT = BT->lchild;
+                TransPTreeToBTree(BT, T, i);
+            }
+            else
+            {
+                // 第二个子节点设为左节点的右节点
+                BT->rchild = CreateBinTreeNode(T->parent[i].data);
+                TransPTreeToBTree(BT->rchild, T, i);
+            }
+        }
+    }
+}
+
+// 前序遍历二叉树
+void PreOrderTraverse(BinTree* T, int level)
+{
+    if (T == NULL)
+        return;
+    printf("%c ", T->data);
+    PreOrderTraverse(T->lchild, level + 1);
+    PreOrderTraverse(T->rchild, level + 1);
+}
+
+// 中序遍历二叉树
+void InOrderTraverse(BinTree* T, int level)
+{
+    if (T == NULL)
+        return;
+    InOrderTraverse(T->lchild, level + 1);
+    printf("%c ", T->data);
+    InOrderTraverse(T->rchild, level + 1);
+}
+
+// 后序遍历二叉树
+void PostOrderTraverse(BinTree* T, int level)
+{
+    if (T == NULL)
+        return;
+    PostOrderTraverse(T->lchild, level + 1);
+    PostOrderTraverse(T->rchild, level + 1);
+    printf("%c ", T->data);
+}
+
+int main()
+{/*//(1)从文件中读入树的信息以孩子双亲表示法存储
+    printf("(1)******从文件中读入树的信息以孩子双亲表示法存储，并显示\n");
+    Tree* T = LoadData();
+    // 显示树
+    PrintTree(T, T->parent[0], 0);
+    printf("\n"); 
+   while (1) {
+        printf("\n********菜单********\n");
+        printf("请选择操作：\n");
+        printf("2、分别求出先根遍历序列、后跟遍历序列、以及层次遍历序列 \n");
+        printf("3、求出指定结点的祖先及所有子孙 \n");
+        printf("4、求出树的度，统计叶子结点的个数 \n");
+        printf("5、求出第k层结点的个数，并显示 \n");
+        printf("6、将树转换成二叉树以二叉链表方式存储，并分别求出前序遍历序列、中序遍历序列和后序遍历序列\n");
+        printf("0、退出程序 \n");
+        int p;
+        scanf("%d", &p);
+        switch (p) {
+        case 0: break;
+        case 2: // (2)分别求出先根遍历序列、后跟遍历序列、以及层次遍历序列
+            printf("(2)******分别求出先根遍历序列、后跟遍历序列、以及层次遍历序列\n");
+            printf("  #先根遍历序列\n");        
+            PreOrder(T, 0);
+            printf("\n");
+            printf("  #后根遍历序列\n");
+            PostOrder(T, 0);
+            printf("\n");
+            printf("  #层次遍历序列\n");
+            LevelOrder(T);
+            printf("\n\n"); break;
+        case 3:// (3)求出指定结点的祖先及所有子孙
+            printf("(3)******求出指定结点的祖先及所有子孙\n");
+            printf("请输入需要查询的结点：");
+            char ch;
+            ch = getchar();
+            TElemType node = ch;
+            TNode anNode = FindAncestor(T, node);
+            printf("%c的祖先节点是: %c\n", node, anNode.data);
+            printf("%c的子孙有: ", node);
+            FindAllChildren(T, node);
+            printf("\n\n"); break;
+        case 4:// (4)求出树的度，统计叶子结点的个数
+            printf("(4)******求出树的度，统计叶子结点的个数\n");
+            printf("该树的度是: %d\n", FindTreeDegree(T));
+            printf("该树的叶子节点有 %d 个\n\n", FindTreeLeafNum(T)); break;
+        case 5:// (5)求出第k层结点的个数，并显示
+            printf("(5)******求出第k层结点的个数，并显示   k=");
+            int k;
+            scanf("%d", &k);
+            FindFloorNum(T, k); break;
+        case 6: //(6)将树转换成二叉树以二叉链表方式存储，并分别求出前序遍历序列、中序遍历序列和后序遍历序列
+            printf("\n(6)******将树转换成二叉树以二叉链表方式存储，并分别求出前序遍历序列、中序遍历序列和后序遍历序列\n");
+            // 初始化二叉树根节点
+            BinTree* BT = CreateBinTreeNode(T->parent[0].data);
+            // BT = (BinTree *)malloc(sizeof(BinTree));
+            // BT->data = T->parent[0].data;
+            // 转换为二叉树
+            TransPTreeToBTree(BT, T, 0);
+            printf("  #前序遍历序列\n");
+            PreOrderTraverse(BT, 0);
+            printf("\n  #中序遍历序列\n");
+            InOrderTraverse(BT, 0);
+            printf("\n  #后序遍历序列\n");
+            PostOrderTraverse(BT, 0);
+            printf("\n"); break;
+        //default: break;
+        }
+        if (p == 0)
+            break;
+    }*/
+
+    // (1)从文件中读入树的信息以孩子双亲表示法存储
+    printf("(1)******从文件中读入树的信息以孩子双亲表示法存储，并显示\n");
+    Tree* T = LoadData();
+    // 显示树
+    PrintTree(T, T->parent[0], 0);
+    printf("\n");
+
+    // (2)分别求出先根遍历序列、后跟遍历序列、以及层次遍历序列
+    printf("(2)******分别求出先根遍历序列、后跟遍历序列、以及层次遍历序列\n");
+    printf("  #先根遍历序列\n");
+    PreOrder(T, 0);
+    printf("\n");
+    printf("  #后根遍历序列\n");
+    PostOrder(T, 0);
+    printf("\n");
+    printf("  #层次遍历序列\n");
+    LevelOrder(T);
+    printf("\n\n");
+
+    // (3)求出指定结点的祖先及所有子孙
+    printf("(3)******求出指定结点的祖先及所有子孙\n");
+    printf("请输入需要查询的结点：");
+    char ch;
+    ch = getchar();
+    TElemType node = ch;
+    TNode anNode = FindAncestor(T, node);
+    printf("%c的祖先节点是: %c\n", node, anNode.data);
+    printf("%c的子孙有: ", node);
+    FindAllChildren(T, node);
+    printf("\n\n");
+
+    // (4)求出树的度，统计叶子结点的个数
+    printf("(4)******求出树的度，统计叶子结点的个数\n");
+    printf("该树的度是: %d\n", FindTreeDegree(T));
+    printf("该树的叶子节点有 %d 个\n\n", FindTreeLeafNum(T));
+
+    // (5)求出第k层结点的个数，并显示
+    printf("(5)******求出第k层结点的个数，并显示   k=");
+    int k;
+    scanf("%d", &k);
+    FindFloorNum(T, k);
+
+    // (5)将树转换成二叉树以二叉链表方式存储，并分别求出前序遍历序列、中序遍历序列和后序遍历序列
+    printf("\n(6)******将树转换成二叉树以二叉链表方式存储，并分别求出前序遍历序列、中序遍历序列和后序遍历序列\n");
+    // 初始化二叉树根节点
+    BinTree* BT = CreateBinTreeNode(T->parent[0].data);
+    // BT = (BinTree *)malloc(sizeof(BinTree));
+    // BT->data = T->parent[0].data;
+    // 转换为二叉树
+    TransPTreeToBTree(BT, T, 0);
+    printf("  #前序遍历序列\n");
+    PreOrderTraverse(BT, 0);
+    printf("\n  #中序遍历序列\n");
+    InOrderTraverse(BT, 0);
+    printf("\n  #后序遍历序列\n");
+    PostOrderTraverse(BT, 0);
+    printf("\n");
+
+    return 0;
+}
